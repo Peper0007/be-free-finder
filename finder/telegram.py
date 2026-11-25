@@ -129,4 +129,5 @@ def print_chat_ids() -> None:
     if not found:
         print("Нет сообщений. Напиши боту (или опубликуй пост в канале, где бот — админ) и запусти ещё раз.")
     for cid, name in found.items():
-        print(f"TELEGRAM_CHAT_ID = {cid}   ({name})")
+        # digits spaced out: GitHub masks any secret value (e.g. a placeholder «0») inside log lines
+        print(f"TELEGRAM_CHAT_ID = {cid}   ({name})   по цифрам: {' '.join(str(cid))}")
