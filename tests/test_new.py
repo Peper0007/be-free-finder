@@ -236,6 +236,11 @@ def test_vinted_price():
     txt = format_ad(Ad("2dehands", "1", "Levi's 501", "u"), v)
     assert "Vinted: €15–20" in txt and "vinted.be/catalog?search_text=Levi%27s+501+jean" in txt
     assert ai._clean({"score": 1})["price_vinted"] == "—"
+    c = ai._clean({"score": 7, "price_etsy": "—", "price_ebay": "€20–30", "price_vinted": "€5–10",
+                   "conf_ebay": "высокая", "conf_vinted": "низкая (догадка)"})
+    assert (c["conf_etsy"], c["conf_ebay"], c["conf_vinted"], c["price_conf"]) == ("", "высокая", "низкая", "низкая")
+    t = format_ad(Ad("2dehands", "2", "x", "u"), c)
+    assert "eBay: €20–30 <i>(уверенность высокая)</i>" in t and "Vinted: €5–10 <i>(уверенность низкая)</i>" in t and "Etsy: —" in t
 
 
 if __name__ == "__main__":
