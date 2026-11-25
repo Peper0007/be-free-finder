@@ -267,7 +267,7 @@ function renderFinds() {
   const list = finds.filter((f) => !(f.status in FOLDERS) &&
     (!paid || (paid === "paid" ? (f.price_eur || 0) > 0 : !(f.price_eur > 0))) &&
     (!area || (area === "near" ? isNear(f) : area === "reach" ? isNear(f) || ships(f) : true)) &&
-    (f.score ?? 0) >= minS && (!todayOnly || f.analyzed_at?.toDate?.().toDateString() === new Date().toDateString()) && (!src || f.source === src) && (!plat || (plat === "etsy" ? f.etsy_ok === true : plat === "vinted" ? hasPrice(f.price_vinted) : f.etsy_ok === false)) && (!st || (f.status || "new") === st) &&
+    (f.score ?? 0) >= minS && (!todayOnly || f.analyzed_at?.toDate?.().toDateString() === new Date().toDateString()) && (!src || f.source === src) && (!plat || (plat === "etsy" ? f.etsy_ok === true : plat === "ebay" ? hasPrice(f.price_ebay) : hasPrice(f.price_vinted))) && (!st || (f.status || "new") === st) &&
     (!q || `${f.title} ${f.location} ${f.items} ${f.description || ""} ${f.query_en || ""}`.toLowerCase().includes(q)));
 
   const today = new Date().toDateString();
