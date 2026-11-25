@@ -59,6 +59,7 @@ DEFAULTS: dict = {
                    "Waver", "Asse", "Leuven", "Mechelen", "Aalst"],
         "only_near": False,     # True = skip far-away ads that are «только лично»
     },
+    "night": {"enabled": True, "from": 1, "to": 6},  # no scheduled runs between these local hours
     "digest": {"enabled": True, "hour": 21},  # evening summary in Telegram (Brussels time)
     "sources": {
         "2dehands": {"enabled": True, "pages": 3, "include_bids": False, "categories": None},  # None = all useful
