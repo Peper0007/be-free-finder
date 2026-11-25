@@ -35,8 +35,9 @@ CATEGORIES = {
     48: "auto-diversen",
 }
 # Checked by default. Left out after the first run (only 0/10 there, they ate the AI quota):
-# bikes 445, car parts 2600 / 48, DIY & building 239, kids 565, sport 784, garden 1847 — add them in the dashboard if needed.
-DEFAULT_FREE_CATS = [c for c in CATEGORIES if c not in (445, 2600, 48, 239, 565, 784, 1847)]
+# bikes 445, car parts 2600 / 48, DIY & building 239, sport 784, garden 1847 — add them in the dashboard if needed.
+# Kids 565 stays for Vinted (LEGO, Playmobil, branded kids' lots); baby gear is dropped by the word filter.
+DEFAULT_FREE_CATS = [c for c in CATEGORIES if c not in (445, 2600, 48, 239, 784, 1847)]
 DEFAULT_CHEAP_CATS = [1, 895, 1784, 1744, 728, 201]
 
 _MONTHS = {"jan": 1, "feb": 2, "mrt": 3, "apr": 4, "mei": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9,
