@@ -241,14 +241,17 @@ function fmtDate(ts) {
   const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
   return d ? d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 }
+const hasPrice = (p) => !!p && !/^[\s—–-]*$/.test(String(p));
 function scoreClass(s) { return s >= 7 ? "s-high" : s >= 4 ? "s-mid" : "s-low"; }
 
-function priceLinks(query) {
+function priceLinks(query, local) {
   const q = encodeURIComponent(query || "").replace(/%20/g, "+");
+  const ql = encodeURIComponent(local || query || "").replace(/%20/g, "+");
   const a = (href, t) => `<a href="${href}" target="_blank" rel="noopener">${t}</a>`;
   return [a(`https://www.ebay.de/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`, "eBay.de продано"),
           a(`https://www.ebay.com/sch/i.html?_nkw=${q}&LH_Sold=1&LH_Complete=1`, "eBay.com продано"),
-          a(`https://www.etsy.com/search?q=${q}`, "Etsy")].join(" · ");
+          a(`https://www.etsy.com/search?q=${q}`, "Etsy"),
+          a(`https://www.vinted.be/catalog?search_text=${ql}&order=relevance`, "Vinted.be")].join(" · ");
 }
 
 function isNear(f) {
@@ -264,7 +267,7 @@ function renderFinds() {
   const list = finds.filter((f) => !(f.status in FOLDERS) &&
     (!paid || (paid === "paid" ? (f.price_eur || 0) > 0 : !(f.price_eur > 0))) &&
     (!area || (area === "near" ? isNear(f) : area === "reach" ? isNear(f) || ships(f) : true)) &&
-    (f.score ?? 0) >= minS && (!todayOnly || f.analyzed_at?.toDate?.().toDateString() === new Date().toDateString()) && (!src || f.source === src) && (!plat || (plat === "etsy" ? f.etsy_ok === true : f.etsy_ok === false)) && (!st || (f.status || "new") === st) &&
+    (f.score ?? 0) >= minS && (!todayOnly || f.analyzed_at?.toDate?.().toDateString() === new Date().toDateString()) && (!src || f.source === src) && (!plat || (plat === "etsy" ? f.etsy_ok === true : plat === "vinted" ? hasPrice(f.price_vinted) : f.etsy_ok === false)) && (!st || (f.status || "new") === st) &&
     (!q || `${f.title} ${f.location} ${f.items} ${f.description || ""} ${f.query_en || ""}`.toLowerCase().includes(q)));
 
   const today = new Date().toDateString();
@@ -295,9 +298,9 @@ function cardHTML(f) {
         <a class="title" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.title)}</a>
         ${f.items ? `<p>🔎 ${esc(f.items)}</p>` : ""}
         ${f.why ? `<p class="muted">💡 ${esc(f.why)}</p>` : ""}
-        <p class="price">💰 ${f.price_etsy || f.price_ebay ? `Etsy <b>${esc(f.price_etsy || "—")}</b> · eBay <b>${esc(f.price_ebay || "—")}</b>` : esc(f.price || "—")}${f.price_conf && f.price_conf !== "высокая" ? ` <span class="conf ${f.price_conf === "низкая" ? "low" : ""}" title="Уверенность ИИ в цене">· ${esc(f.price_conf)} уверенность</span>` : ""}</p>
-        ${"etsy_ok" in f ? `<p class="plat ${f.etsy_ok ? "etsy" : "ebay"}">🏷 ${f.etsy_ok ? "Etsy ✅ винтаж/handmade" : "только eBay"}${f.era ? ` · ${esc(f.era)}` : ""}</p>` : ""}
-        <p class="checks">🔍 ${priceLinks(f.query_en || f.title)}${f.query_en ? ` <span class="muted small">«${esc(f.query_en)}»</span>` : ""}</p>
+        <p class="price">💰 ${f.price_etsy || f.price_ebay ? `Etsy <b>${esc(f.price_etsy || "—")}</b> · eBay <b>${esc(f.price_ebay || "—")}</b>${f.price_vinted !== undefined ? ` · Vinted <b>${esc(f.price_vinted || "—")}</b>` : ""}` : esc(f.price || "—")}${f.price_conf && f.price_conf !== "высокая" ? ` <span class="conf ${f.price_conf === "низкая" ? "low" : ""}" title="Уверенность ИИ в цене">· ${esc(f.price_conf)} уверенность</span>` : ""}</p>
+        ${"etsy_ok" in f ? `<p class="plat ${f.etsy_ok ? "etsy" : "ebay"}">🏷 ${f.etsy_ok ? "Etsy ✅ винтаж/handmade" : hasPrice(f.price_vinted) ? "не для Etsy — eBay / Vinted" : "только eBay"}${f.era ? ` · ${esc(f.era)}` : ""}</p>` : ""}
+        <p class="checks">🔍 ${priceLinks(f.query_en || f.title, f.query_local)}${f.query_en ? ` <span class="muted small">«${esc(f.query_en)}»</span>` : ""}</p>
         <p class="meta">🚚 ${esc(f.pickup || "—")}</p>
         <p class="meta">📍 ${esc(f.location || "?")} · ${SOURCE_NAMES[f.source] || f.source}</p>
         <p class="meta">🕐 опубликовано ${f.posted_at ? ago(f.posted_at * 1000) : esc(f.posted || "?")} · оценено ${fmtDate(f.analyzed_at)}</p>
@@ -311,7 +314,7 @@ function cardHTML(f) {
 }
 
 // ---------- sales tracking (on «Забранные» cards) ----------
-const SOLD_WHERE = { "": "не продано", etsy: "Etsy", ebay: "eBay", local: "2dehands / лично", other: "другое" };
+const SOLD_WHERE = { "": "не продано", etsy: "Etsy", ebay: "eBay", vinted: "Vinted", local: "2dehands / лично", other: "другое" };
 function salesHTML(f) {
   const v = (x) => (x === undefined || x === null ? "" : esc(x));
   return `<div class="sales" data-sales="${esc(f.id)}">
