@@ -241,6 +241,16 @@ function fmtDate(ts) {
   const d = ts?.toDate ? ts.toDate() : ts ? new Date(ts) : null;
   return d ? d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 }
+// prices per marketplace, each with the AI's own confidence (old finds: one shared confidence)
+function priceHTML(f) {
+  const confTag = (c) => c && c !== "высокая" ? ` <span class="conf ${c === "низкая" ? "low" : ""}" title="Уверенность ИИ в цене">· ${esc(c)} уверенность</span>` : "";
+  if (["conf_etsy", "conf_ebay", "conf_vinted"].some((k) => k in f)) {
+    const rows = [["Etsy", f.price_etsy, f.conf_etsy], ["eBay", f.price_ebay, f.conf_ebay], ["Vinted", f.price_vinted, f.conf_vinted]]
+      .map(([n, p, c]) => hasPrice(p) ? `${n} <b>${esc(p)}</b>${confTag(c)}` : `<span class="muted">${n} —</span>`);
+    return `<p class="price">💰 ${rows.join("<br>")}</p>`;
+  }
+  return `<p class="price">💰 ${f.price_etsy || f.price_ebay ? `Etsy <b>${esc(f.price_etsy || "—")}</b> · eBay <b>${esc(f.price_ebay || "—")}</b>${f.price_vinted !== undefined ? ` · Vinted <b>${esc(f.price_vinted || "—")}</b>` : ""}` : esc(f.price || "—")}${confTag(f.price_conf)}</p>`;
+}
 const hasPrice = (p) => !!p && !/^[\s—–-]*$/.test(String(p));
 function scoreClass(s) { return s >= 7 ? "s-high" : s >= 4 ? "s-mid" : "s-low"; }
 
@@ -298,7 +308,7 @@ function cardHTML(f) {
         <a class="title" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.title)}</a>
         ${f.items ? `<p>🔎 ${esc(f.items)}</p>` : ""}
         ${f.why ? `<p class="muted">💡 ${esc(f.why)}</p>` : ""}
-        <p class="price">💰 ${f.price_etsy || f.price_ebay ? `Etsy <b>${esc(f.price_etsy || "—")}</b> · eBay <b>${esc(f.price_ebay || "—")}</b>${f.price_vinted !== undefined ? ` · Vinted <b>${esc(f.price_vinted || "—")}</b>` : ""}` : esc(f.price || "—")}${f.price_conf && f.price_conf !== "высокая" ? ` <span class="conf ${f.price_conf === "низкая" ? "low" : ""}" title="Уверенность ИИ в цене">· ${esc(f.price_conf)} уверенность</span>` : ""}</p>
+        ${priceHTML(f)}
         ${"etsy_ok" in f ? `<p class="plat ${f.etsy_ok ? "etsy" : "ebay"}">🏷 ${f.etsy_ok ? "Etsy ✅ винтаж/handmade" : hasPrice(f.price_vinted) ? "не для Etsy — eBay / Vinted" : "только eBay"}${f.era ? ` · ${esc(f.era)}` : ""}</p>` : ""}
         <p class="checks">🔍 ${priceLinks(f.query_en || f.title, f.query_local)}${f.query_en ? ` <span class="muted small">«${esc(f.query_en)}»</span>` : ""}</p>
         <p class="meta">🚚 ${esc(f.pickup || "—")}</p>
