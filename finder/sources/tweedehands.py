@@ -115,6 +115,7 @@ def parse(data: dict, source: str, base: str, max_eur: float = 0.0, include_bids
             posted_at=posted_ts(date),
             delivery=delivery,
             price=price,
+            seller=str((li.get("sellerInformation") or {}).get("sellerId") or ""),
         ))
     return [a for a in ads if a.ad_id]
 
