@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Free Finder BE — дашборд</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='10' height='20' fill='%23000'/%3E%3Crect x='10' width='10' height='20' fill='%23fdda24'/%3E%3Crect x='20' width='10' height='20' fill='%23ef3340'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
   <!-- Login -->
@@ -115,7 +115,7 @@
             </label>
             <label>Сколько объявлений отдавать ИИ за запуск
               <input id="s-maxai" type="number" min="1" max="400">
-              <span class="hint">Верхняя граница. Проверка идёт каждый час, и бот сам делит дневной лимит Gemini (500 запросов) поровну на оставшиеся до сброса запуски.</span>
+              <span class="hint">Верхняя граница. Проверка идёт каждые 20 минут, и бот сам делит дневной лимит Gemini (500 запросов) поровну на оставшиеся до сброса запуски.</span>
             </label>
             <label>Объявлений в одном запросе к ИИ
               <input id="s-batch" type="number" min="1" max="6">
@@ -183,7 +183,11 @@
           ищется часть слова, регистр не важен (<code>kitten</code>, <code>\bbieden\b</code>, <code>canap[ée]</code>). Два словаря: NL и FR.</p>
         <div class="cards">
           <div class="card"><h3>Мусор (пропускать)</h3><textarea id="w-skip" rows="22"></textarea></div>
-          <div class="card"><h3>Исключения (всегда к ИИ)</h3><textarea id="w-keep" rows="10"></textarea>
+          <div class="card"><h3>🎯 Охота (всегда в Telegram со звуком)</h3>
+            <textarea id="w-hunt" rows="6" placeholder="например: Val Saint Lambert"></textarea>
+            <span class="hint">Ваши слова: бренды, модели, мастера. Ищется в названии и описании. Такие объявления ИИ смотрит первыми,
+              и они всегда приходят в Telegram со звуком, даже с низкой оценкой. По одному слову в строке.</span>
+            <h3>Исключения (всегда к ИИ)</h3><textarea id="w-keep" rows="10"></textarea>
             <h3>Пропускать категории (часть ссылки)</h3>
             <textarea id="w-url" rows="4"></textarea>
             <span class="hint">Часть ссылки 2dehands, например <code>/huis-en-inrichting/banken</code> — диваны, <code>/kinderen-en-baby-s/kinderwagens</code> — коляски. Путь виден в ссылке объявления.</span>
@@ -244,6 +248,6 @@
     </main>
   </div>
 
-  <script type="module" src="app.js?v=23"></script>
+  <script type="module" src="app.js?v=24"></script>
 </body>
 </html>

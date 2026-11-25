@@ -111,6 +111,7 @@ export const DEFAULTS = {
       "enabled": true
     }
   },
+  "hunt_words": [],
   "skip_words": [
     "\\bkat(je|ten|tje)?s?\\b",
     "\\bpoes",
