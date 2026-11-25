@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Free Finder BE — дашборд</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='10' height='20' fill='%23000'/%3E%3Crect x='10' width='10' height='20' fill='%23fdda24'/%3E%3Crect x='20' width='10' height='20' fill='%23ef3340'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=17">
+</head>
+<body>
+  <!-- Login -->
+  <section id="login" class="login hidden">
+    <div class="login-card">
+      <h1>Free Finder 🇧🇪</h1>
+      <p>Бесплатные находки в Бельгии для Etsy/eBay</p>
+      <button id="btn-login" class="btn primary">Войти через Google</button>
+      <p id="login-error" class="error"></p>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand">Free Finder 🇧🇪</div>
+      <div id="bot-state" class="pill"></div>
+      <div class="spacer"></div>
+      <button id="btn-run" class="btn primary">▶ Проверить сейчас</button>
+      <span id="user-email" class="muted small"></span>
+      <button id="btn-logout" class="btn ghost small">Выйти</button>
+    </header>
+    <div id="toast" class="toast hidden"></div>
+
+    <nav class="tabs">
+      <button data-tab="finds" class="active">Находки</button>
+      <button data-tab="taken">Забранные</button>
+      <button data-tab="gone">Забранные другими</button>
+      <button data-tab="spam">Спам</button>
+      <button data-tab="settings">Настройки</button>
+      <button data-tab="filters">Фильтры слов</button>
+      <button data-tab="criteria">Критерии ИИ</button>
+      <button data-tab="runs">Запуски</button>
+      <button data-tab="limits">Лимиты</button>
+    </nav>
+
+    <div id="live" class="live"></div>
+    <div id="lim-strip" class="lim-strip"></div>
+    <main>
+      <!-- FINDS -->
+      <section id="tab-finds" class="tab">
+        <div class="stats" id="stats"></div>
+        <div class="toolbar">
+          <label>Оценка от <input id="f-score" type="range" min="0" max="10" value="6"> <b id="f-score-val">6</b></label>
+          <label>Сайт
+            <select id="f-source"><option value="">все</option><option value="2dehands">2dehands</option><option value="marktplaats">Marktplaats</option><option value="donnerie">Donnerie</option></select>
+          </label>
+          <label>Статус
+            <select id="f-status">
+              <option value="">все</option><option value="new">новые</option><option value="interesting">интересно</option>
+              <option value="skip">мимо</option>
+            </select>
+          </label>
+          <label>Цена
+            <select id="f-paid"><option value="">все</option><option value="free">бесплатные</option><option value="paid">платные (дешёвые)</option></select>
+          </label>
+          <label>Где
+            <select id="f-area"><option value="">везде</option><option value="near">рядом с домом</option><option value="reach">рядом или отправят</option></select>
+          </label>
+          <label>Площадка
+            <select id="f-platform"><option value="">все</option><option value="etsy">Etsy-винтаж</option><option value="ebay">только eBay</option></select>
+          </label>
+          <input id="f-search" type="search" placeholder="Поиск по названию, городу…">
+          <button id="btn-route" class="btn small" title="Открыть в Google Maps маршрут по находкам со статусом «интересно»">🗺 Маршрут по «интересным»</button>
+          <label>Показать
+            <select id="f-limit"><option>100</option><option selected>300</option><option>1000</option></select>
+          </label>
+        </div>
+        <div id="finds" class="grid"></div>
+        <p id="finds-empty" class="muted hidden">Ничего не найдено по этим фильтрам. Попробуй снизить оценку.</p>
+      </section>
+
+
+      <!-- TAKEN -->
+      <section id="tab-taken" class="tab hidden">
+        <p class="muted small">Сюда попадает всё, что отмечено «забрал». Чтобы вернуть вещь в «Находки», нажми у неё другой статус.
+          Когда продашь вещь — впиши у карточки, где и за сколько, расходы и сколько часов ушло: ниже посчитается, сколько это приносит.</p>
+        <div id="sales-summary"></div>
+        <div id="taken" class="grid folder-grid"></div>
+        <p id="taken-empty" class="muted hidden"></p>
+      </section>
+
+      <!-- GONE -->
+      <section id="tab-gone" class="tab hidden">
+        <p class="muted small">Вещи, которые успел забрать кто-то другой. ИИ считает их удачными находками (учится на них), просто вы не успели.
+          Сюда же бот сам переносит находки, объявления которых сняли с сайта (на них ИИ не учится).</p>
+        <div id="gone" class="grid folder-grid"></div>
+        <p id="gone-empty" class="muted hidden"></p>
+      </section>
+
+      <!-- SPAM -->
+      <section id="tab-spam" class="tab hidden">
+        <p class="muted small">Ненастоящие объявления (обман, приманка, «бесплатно», а на деле продажа). Помечается только само объявление, не вся категория.</p>
+        <div id="spam" class="grid folder-grid"></div>
+        <p id="spam-empty" class="muted hidden"></p>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="tab-settings" class="tab hidden">
+        <div class="cards">
+          <div class="card">
+            <h3>Бот</h3>
+            <label class="switch"><input id="s-paused" type="checkbox"> Пауза (расписание не запускается)</label>
+            <label class="switch"><input id="s-telegram" type="checkbox"> Отправлять находки в Telegram</label>
+            <label>Порог оценки для Telegram: <b id="s-min-val"></b>
+              <input id="s-min" type="range" min="0" max="10">
+            </label>
+            <label>Сколько объявлений отдавать ИИ за запуск
+              <input id="s-maxai" type="number" min="1" max="400">
+              <span class="hint">Верхняя граница. Проверка идёт каждый час, и бот сам делит дневной лимит Gemini (500 запросов) поровну на оставшиеся до сброса запуски.</span>
+            </label>
+            <label>Объявлений в одном запросе к ИИ
+              <input id="s-batch" type="number" min="1" max="6">
+              <span class="hint">Лимит Gemini считается в запросах, а не в объявлениях: 4 в запросе = в 4 раза больше проверенных объявлений в день. 1 = по одному (как раньше).</span>
+            </label>
+            <label class="switch"><input id="s-alive" type="checkbox"> Проверять, не сняли ли объявление (снятые уходят в «Забранные другими»)</label>
+            <label class="switch"><input id="s-digest" type="checkbox"> Вечерняя сводка в Telegram</label>
+            <label>Время сводки (час по Брюсселю) <input id="s-digest-hour" type="number" min="0" max="23"></label>
+            <label class="switch"><input id="s-learn" type="checkbox"> Учиться на моих отметках («забрал», «интересно», «мимо»)</label>
+            <span class="hint">ИИ видит ваши последние отметки как примеры и подстраивает оценки под ваш вкус.</span>
+            <label>Со звуком в Telegram — от оценки
+              <input id="s-loud" type="number" min="0" max="11">
+              <span class="hint">Находки ниже этой оценки приходят без звука. 11 = всё без звука.</span>
+            </label>
+            <label>Модель Gemini
+              <input id="s-model" list="models">
+              <datalist id="models">
+                <option value="gemini-3.5-flash-lite"><option value="gemini-3.1-flash-lite"><option value="gemini-flash-lite-latest"><option value="gemini-flash-latest">
+              </datalist>
+              <span class="hint">Лимиты моделей: AI Studio → Rate Limit. Flash Lite — 15 в минуту, 500 в день.</span>
+            </label>
+          </div>
+          <div class="card">
+            <h3>Источники</h3>
+            <label class="switch"><input id="s-td" type="checkbox"> 2dehands.be / 2ememain.be — бесплатные («Gratis» / «Gratuit»)</label>
+            <span class="hint">Это одна площадка на двух языках: все объявления 2ememain есть и на 2dehands.</span>
+            <label>Страниц на категорию <input id="s-td-pages" type="number" min="1" max="10"><span class="hint">100 объявлений на странице, самые свежие сверху. Бот листает, пока не дойдёт до уже проверенных.</span></label>
+            <label class="switch"><input id="s-td-bids" type="checkbox"> Брать и «Bieden» / «Faire offre» с ценой от 0 €</label>
+            <label>Категории 2dehands (id, по одному в строке; пусто = все полезные)
+              <textarea id="s-td-cats" rows="3"></textarea>
+            </label>
+            <label class="switch"><input id="s-donnerie" type="checkbox"> Donnerie.be (всё бесплатно)</label>
+            <label class="switch"><input id="s-mp" type="checkbox"> Marktplaats.nl — бесплатные (Нидерланды)</label>
+            <label>Страниц Marktplaats на категорию <input id="s-mp-pages" type="number" min="1" max="10"></label>
+            <h3>Дешёвое на 2dehands (не только бесплатное)</h3>
+            <label class="switch"><input id="s-cheap" type="checkbox"> Смотреть платные объявления до указанной цены</label>
+            <label>Цена до, € <input id="s-cheap-max" type="number" min="0.5" step="0.5"></label>
+            <label>В Telegram — платные от оценки <input id="s-paid-min" type="number" min="0" max="11"><span class="hint">Дешёвые платные вещи ИИ оценивает высоко чаще, поэтому в канал идут только самые сильные. В дашборде видны все (фильтр «Цена»).</span></label>
+            <label>Страниц на категорию <input id="s-cheap-pages" type="number" min="1" max="10"><span class="hint">100 объявлений на странице, самые свежие сверху.</span></label>
+            <label>Категории 2dehands (id, по одному в строке)
+              <textarea id="s-cheap-cats" rows="3"></textarea>
+              <span class="hint"><code>1</code> Antiek en Kunst, <code>895</code> Verzamelen, <code>1784</code> Postzegels en Munten,
+                <code>1744</code> Cd's en Dvd's, <code>728</code> Muziek, <code>201</code> Boeken, <code>31</code> Audio, Tv en Foto,
+                <code>356</code> Games, <code>1099</code> Hobby, <code>504</code> Huis en Inrichting, <code>428</code> Diversen.</span>
+            </label>
+          </div>
+          <div class="card">
+            <h3>Где забирать</h3>
+            <label>Город <input id="s-home-city"></label>
+            <label>Почтовые индексы рядом, от–до <input id="s-home-pc" placeholder="1000-1999"><span class="hint">1000–1999 = Брюссель и оба Брабанта (около 30–40 км вокруг).</span></label>
+            <label>Рядом (по одному в строке)
+              <textarea id="s-home-near" rows="6"></textarea>
+            </label>
+            <span class="hint">Объявления отсюда и те, что продавец готов отправить (bpost и т. п.), ИИ проверяет первыми. Далёкие «только лично» ИИ оценивает на 1–2 балла ниже.</span>
+            <label class="switch"><input id="s-home-only" type="checkbox"> Пропускать далёкие объявления «только лично» совсем</label>
+          </div>
+        </div>
+        <button class="btn primary save" data-save="settings">Сохранить настройки</button>
+      </section>
+
+      <!-- FILTERS -->
+      <section id="tab-filters" class="tab hidden">
+        <p class="muted">Объявления, в названии которых есть «мусорное» слово, отбрасываются без ИИ (экономит лимит).
+          Если в названии есть слово-исключение — объявление всё равно идёт к ИИ. По одному слову/регулярному выражению в строке;
+          ищется часть слова, регистр не важен (<code>kitten</code>, <code>\bbieden\b</code>, <code>canap[ée]</code>). Два словаря: NL и FR.</p>
+        <div class="cards">
+          <div class="card"><h3>Мусор (пропускать)</h3><textarea id="w-skip" rows="22"></textarea></div>
+          <div class="card"><h3>Исключения (всегда к ИИ)</h3><textarea id="w-keep" rows="10"></textarea>
+            <h3>Пропускать категории (часть ссылки)</h3>
+            <textarea id="w-url" rows="4"></textarea>
+            <span class="hint">Часть ссылки 2dehands, например <code>/huis-en-inrichting/banken</code> — диваны, <code>/kinderen-en-baby-s/kinderwagens</code> — коляски. Путь виден в ссылке объявления.</span>
+            <h3>Проверить название</h3>
+            <input id="w-test" placeholder="например: Oude porseleinen beeldjes">
+            <div id="w-test-res" class="testres"></div>
+          </div>
+        </div>
+        <button class="btn primary save" data-save="filters">Сохранить фильтры</button>
+      </section>
+
+      <!-- CRITERIA -->
+      <section id="tab-criteria" class="tab hidden">
+        <p class="muted">Что считать интересным, а что нет. Этот текст вставляется в задание для Gemini; формат ответа (оценка, цена…) бот добавляет сам.</p>
+        <textarea id="c-text" rows="18" class="wide"></textarea>
+        <div class="row">
+          <button class="btn primary save" data-save="criteria">Сохранить критерии</button>
+          <button id="c-reset" class="btn ghost">Вернуть по умолчанию</button>
+        </div>
+      </section>
+
+      <!-- RUNS -->
+      <section id="tab-runs" class="tab hidden">
+        <div class="card">
+          <h3>Кнопка «Проверить сейчас»</h3>
+          <p class="muted small">Кнопка запускает GitHub Actions. Ей нужен токен GitHub — он хранится в базе дашборда и <b>общий для обоих пользователей</b>, вводить его нужно один раз.
+            Создай его: GitHub → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate:
+            Repository access — <i>Only select repositories → be-free-finder</i>, Permissions → Repository → <i>Actions: Read and write</i>.</p>
+          <div class="row">
+            <input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off">
+            <button id="gh-save" class="btn">Сохранить</button>
+            <button id="gh-clear" class="btn ghost">Удалить</button>
+            <span id="gh-state" class="muted small"></span>
+          </div>
+          <p class="small"><a href="https://github.com/Peper0007/be-free-finder/actions" target="_blank" rel="noopener">Открыть GitHub Actions (логи)</a></p>
+        </div>
+        <table class="runs">
+          <thead><tr><th>Начало</th><th>Тип</th><th>Статус</th><th>Собрано</th><th>Новых</th><th>Мусор / дубли</th><th>К ИИ</th><th>Оценено</th><th>Находок</th><th>Очередь</th><th>Время</th><th>Ошибки</th></tr></thead>
+          <tbody id="runs"></tbody>
+        </table>
+      </section>
+
+      <!-- LIMITS -->
+      <section id="tab-limits" class="tab hidden">
+        <div class="cards">
+          <div class="card">
+            <h3>Gemini — запросы ИИ за сутки</h3>
+            <div id="lim-gemini"></div>
+            <label>Дневной лимит модели
+              <input id="l-rpd" type="number" min="1" max="100000">
+              <span class="hint">Flash Lite на бесплатном тарифе — 500 в день. Точная цифра: AI Studio → Rate limit. Сброс — в полночь по тихоокеанскому времени.</span>
+            </label>
+          </div>
+        </div>
+        <button class="btn primary save" data-save="limits">Сохранить лимиты</button>
+        <p class="muted small">Расчёт по журналу запусков в дашборде. Запросы к Gemini из других мест (AI Studio и т.п.) с тем же ключом тоже тратят лимит, но здесь не видны.</p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="app.js?v=19"></script>
+</body>
+</html>
