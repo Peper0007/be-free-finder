@@ -11,6 +11,7 @@ import requests
 from .common import Ad, log
 
 API = "https://api.telegram.org/bot{token}/{method}"
+CONF_SHORT = {"высокая": "уверенность высокая", "средняя": "уверенность средняя", "низкая": "уверенность низкая"}
 SOURCE_NAMES = {"2dehands": "2dehands", "marktplaats": "Marktplaats", "donnerie": "Donnerie.be"}
 
 
@@ -84,9 +85,17 @@ def format_ad(ad: Ad, verdict: dict | None) -> str:
             era = f" ({e(str(verdict['era']))})" if verdict.get("era") else ""
             lines.append(("🏷 Etsy ✅ винтаж/handmade" if verdict["etsy_ok"] else "🏷 не для Etsy — eBay / Vinted") + era)
         if verdict.get("price_etsy") or verdict.get("price_ebay") or verdict.get("price_vinted"):
-            lines.append(f"💰 Etsy: {e(str(verdict.get('price_etsy', '—')))} · eBay: {e(str(verdict.get('price_ebay', '—')))}"
-                         f" · Vinted: {e(str(verdict.get('price_vinted', '—')))}")
-            if verdict.get("price_conf") and verdict["price_conf"] != "высокая":
+            per_platform = any(f"conf_{p}" in verdict for p in ("etsy", "ebay", "vinted"))
+            parts = []
+            for name, p in (("Etsy", "etsy"), ("eBay", "ebay"), ("Vinted", "vinted")):
+                price = str(verdict.get(f"price_{p}") or "—")
+                part = f"{name}: {e(price)}"
+                conf = verdict.get(f"conf_{p}") if per_platform else ""
+                if conf and price.strip(" —–-"):
+                    part += f" <i>({CONF_SHORT.get(conf, conf)})</i>"
+                parts.append(part)
+            lines.append("💰 " + " · ".join(parts))
+            if not per_platform and verdict.get("price_conf") and verdict["price_conf"] != "высокая":
                 lines[-1] += f" <i>(оценка ИИ, уверенность {e(verdict['price_conf'])})</i>"
         elif verdict.get("price"):
             lines.append(f"💰 {e(str(verdict['price']))}")

@@ -38,7 +38,9 @@ PROMPT_HEAD = """Ты — опытный перекупщик винтажа, р
   современные стикеры и фишки, обычная бижутерия — обычно €3–15;
 - дороже стоят: ручная работа (ковры, вышивка, китеники), редкие номерные детали, известные бренды и модели, серебро/золото по весу;
 - «золото», «антиквариат» и т. п. за 1 € или бесплатно — почти всегда подделка или приманка: так и пиши в why и снижай оценку;
-- если не можешь опознать модель/клеймо — цена «на глаз», ставь price_conf "низкая".
+- если не можешь опознать модель/клеймо — цена «на глаз», ставь уверенность "низкая";
+- уверенность оценивай ОТДЕЛЬНО для каждой площадки: например, цены eBay на модель известны (высокая), а на Vinted
+  таких почти не продают (низкая).
 
 """
 
@@ -65,7 +67,9 @@ PROMPT_TAIL = """
   "price_vinted": "реалистичная цена продажи на Vinted в Бельгии в EUR, например '€10–15' (или '—', если на Vinted такое не продают)",
   "etsy_ok": true или false — можно ли продавать на Etsy по ИХ правилам: только винтаж (вещи 20+ лет), handmade или материалы для рукоделия; современные фабричные вещи — false,
   "era": "примерный возраст/эпоха вещи по-русски, например '1970-е, СССР' или 'современная'",
-  "price_conf": "уверенность в цене: 'высокая' (знаю модель и цены продаж), 'средняя' или 'низкая' (догадка)",
+  "conf_etsy": "уверенность в цене Etsy: 'высокая' (знаю модель и цены продаж), 'средняя' или 'низкая' (догадка); '—', если цена Etsy '—'",
+  "conf_ebay": "уверенность в цене eBay: 'высокая' / 'средняя' / 'низкая'; '—', если цена eBay '—'",
+  "conf_vinted": "уверенность в цене Vinted: 'высокая' / 'средняя' / 'низкая'; '—', если цена Vinted '—'",
   "query_en": "короткий поисковый запрос НА АНГЛИЙСКОМ для поиска проданных аналогов на eBay: бренд, модель, тип, эпоха — 2–6 слов (например 'Rotring Isograph 0.20 pen', 'Soviet porcelain figurine LFZ')",
   "query_local": "тот же запрос для поиска на Vinted: бренд/модель + слово на французском или нидерландском, 2–5 слов (например 'Levi's 501 jeans', 'Lego Technic 8880', 'Tintin album')",
   "pickup": "легко ли забрать: 'отправит (bpost и т. п.)' / 'только лично' / 'неизвестно'"
@@ -106,6 +110,10 @@ def _image_part(url: str) -> dict | None:
     return {"inline_data": {"mime_type": mime, "data": base64.b64encode(resp.content).decode()}}
 
 
+def _has_price(p) -> bool:
+    return bool(str(p or "").strip(" —–-"))
+
+
 def _clean(data: dict) -> dict:
     data["score"] = int(data.get("score", 0))
     pe, pb = str(data.get("price_etsy") or "—"), str(data.get("price_ebay") or "—")
@@ -116,8 +124,21 @@ def _clean(data: dict) -> dict:
     ok = data.get("etsy_ok")
     data["etsy_ok"] = ok if isinstance(ok, bool) else str(ok).strip().lower() in ("true", "yes", "да", "1")
     data["era"] = str(data.get("era") or "").strip()[:60]
-    conf = str(data.get("price_conf") or "").lower()
-    data["price_conf"] = "высокая" if "выс" in conf else "низкая" if "низ" in conf else "средняя"
+    def norm(c) -> str:
+        c = str(c or "").lower()
+        return "высокая" if "выс" in c else "низкая" if "низ" in c else "средняя"
+    overall = data.get("price_conf")
+    rank = {"низкая": 0, "средняя": 1, "высокая": 2}
+    used = []
+    for plat, price in (("etsy", pe), ("ebay", pb), ("vinted", pv)):
+        if _has_price(price):
+            c = norm(data.get(f"conf_{plat}") or overall)
+            data[f"conf_{plat}"] = c
+            used.append(c)
+        else:
+            data[f"conf_{plat}"] = ""
+    # overall = the weakest of the platforms that have a price (kept for old views and stats)
+    data["price_conf"] = min(used, key=rank.get) if used else norm(overall)
     data["price"] = f"Etsy {pe} · eBay {pb} · Vinted {pv}"
     return data
 
