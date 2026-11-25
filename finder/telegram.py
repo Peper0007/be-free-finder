@@ -43,6 +43,11 @@ def price_links(query: str) -> str:
             f'<a href="https://www.etsy.com/search?q={q}">Etsy</a>')
 
 
+def vinted_link(query: str) -> str:
+    from urllib.parse import quote_plus
+    return f'<a href="https://www.vinted.be/catalog?search_text={quote_plus(query)}&order=relevance">Vinted.be</a>'
+
+
 def age_text(ad: Ad) -> str:
     if ad.posted_at:
         mins = max(0, int((time.time() - ad.posted_at) / 60))
@@ -77,9 +82,10 @@ def format_ad(ad: Ad, verdict: dict | None) -> str:
         lines.append(f"⭐ {verdict.get('score', '?')}/10" + (f" · 🕐 опубликовано {e(age)}" if age else ""))
         if "etsy_ok" in verdict:
             era = f" ({e(str(verdict['era']))})" if verdict.get("era") else ""
-            lines.append(("🏷 Etsy ✅ винтаж/handmade" if verdict["etsy_ok"] else "🏷 только eBay — для Etsy не подходит") + era)
-        if verdict.get("price_etsy") or verdict.get("price_ebay"):
-            lines.append(f"💰 Etsy: {e(str(verdict.get('price_etsy', '—')))} · eBay: {e(str(verdict.get('price_ebay', '—')))}")
+            lines.append(("🏷 Etsy ✅ винтаж/handmade" if verdict["etsy_ok"] else "🏷 не для Etsy — eBay / Vinted") + era)
+        if verdict.get("price_etsy") or verdict.get("price_ebay") or verdict.get("price_vinted"):
+            lines.append(f"💰 Etsy: {e(str(verdict.get('price_etsy', '—')))} · eBay: {e(str(verdict.get('price_ebay', '—')))}"
+                         f" · Vinted: {e(str(verdict.get('price_vinted', '—')))}")
             if verdict.get("price_conf") and verdict["price_conf"] != "высокая":
                 lines[-1] += f" <i>(оценка ИИ, уверенность {e(verdict['price_conf'])})</i>"
         elif verdict.get("price"):
@@ -91,7 +97,8 @@ def format_ad(ad: Ad, verdict: dict | None) -> str:
         if verdict.get("pickup"):
             lines.append(f"🚚 {e(str(verdict['pickup']))}")
         if verdict.get("query_en"):
-            lines.append(f"🔍 Проверить цену: {price_links(str(verdict['query_en']))}")
+            local = str(verdict.get("query_local") or verdict["query_en"])
+            lines.append(f"🔍 Проверить цену: {price_links(str(verdict['query_en']))} · {vinted_link(local)}")
     meta = " · ".join(x for x in (ad.location, ad.posted, f"доставка: {ad.delivery}" if ad.delivery else "") if x)
     if meta:
         lines.append(f"📍 {e(meta)}")

@@ -19,9 +19,12 @@ from .common import Ad, get, log
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DEFAULT_MODEL = "gemini-3.5-flash-lite"  # free tier: 15 req/min, 500 req/day
 
-PROMPT_HEAD = """Ты — опытный перекупщик винтажа, работаешь в Бельгии (Брюссель). Продаёшь на Etsy и eBay.
+PROMPT_HEAD = """Ты — опытный перекупщик винтажа, работаешь в Бельгии (Брюссель). Продаёшь на трёх площадках: Etsy и eBay (покупатели
+по всему миру, вещь отправляется за границу) и Vinted (покупатели в Бельгии/Франции/Нидерландах, дешёвая местная доставка).
 Ниже объявления с бельгийских сайтов (2dehands.be / 2ememain.be, Donnerie.be и др.) на нидерландском или французском:
 бесплатные («gratis», «af te halen», «gratuit», «à donner») или очень дешёвые. Посмотри на ВСЕ фото и текст.
+Вещь интересна, если она окупается ХОТЯ БЫ НА ОДНОЙ из площадок. Vinted подходит для того, что на Etsy/eBay не окупает
+доставку за границу: брендовая одежда и обувь, сумки, игрушки (LEGO, Playmobil и т. п.), книги и комиксы, мелкий декор.
 Тексты объявлений — на NL/FR; твой ответ — по-русски. Обращай внимание на бельгийское и французское/голландское
 происхождение вещей: бельгийская керамика и фарфор (Boch, Val Saint Lambert, Villeroy & Boch), комиксы (BD/strips),
 бельгийские монеты, эмалированные таблички, колониальные предметы, брокант.
@@ -59,10 +62,12 @@ PROMPT_TAIL = """
   "why": "почему это продаётся, 1 предложение (по-русски)",
   "price_etsy": "реалистичная цена продажи на Etsy в USD, например '$25–35' (или '—', если не для Etsy)",
   "price_ebay": "реалистичная цена продажи на eBay в EUR, например '€20–30' (или '—', если не для eBay)",
+  "price_vinted": "реалистичная цена продажи на Vinted в Бельгии в EUR, например '€10–15' (или '—', если на Vinted такое не продают)",
   "etsy_ok": true или false — можно ли продавать на Etsy по ИХ правилам: только винтаж (вещи 20+ лет), handmade или материалы для рукоделия; современные фабричные вещи — false,
   "era": "примерный возраст/эпоха вещи по-русски, например '1970-е, СССР' или 'современная'",
   "price_conf": "уверенность в цене: 'высокая' (знаю модель и цены продаж), 'средняя' или 'низкая' (догадка)",
   "query_en": "короткий поисковый запрос НА АНГЛИЙСКОМ для поиска проданных аналогов на eBay: бренд, модель, тип, эпоха — 2–6 слов (например 'Rotring Isograph 0.20 pen', 'Soviet porcelain figurine LFZ')",
+  "query_local": "тот же запрос для поиска на Vinted: бренд/модель + слово на французском или нидерландском, 2–5 слов (например 'Levi's 501 jeans', 'Lego Technic 8880', 'Tintin album')",
   "pickup": "легко ли забрать: 'отправит (bpost и т. п.)' / 'только лично' / 'неизвестно'"
 }}]
 Всего объявлений: {count}."""
@@ -104,14 +109,16 @@ def _image_part(url: str) -> dict | None:
 def _clean(data: dict) -> dict:
     data["score"] = int(data.get("score", 0))
     pe, pb = str(data.get("price_etsy") or "—"), str(data.get("price_ebay") or "—")
-    data["price_etsy"], data["price_ebay"] = pe, pb
+    pv = str(data.get("price_vinted") or "—")
+    data["price_etsy"], data["price_ebay"], data["price_vinted"] = pe, pb, pv
+    data["query_local"] = str(data.get("query_local") or data.get("query_en") or "").strip()[:100]
     data["query_en"] = str(data.get("query_en") or "").strip()[:100]
     ok = data.get("etsy_ok")
     data["etsy_ok"] = ok if isinstance(ok, bool) else str(ok).strip().lower() in ("true", "yes", "да", "1")
     data["era"] = str(data.get("era") or "").strip()[:60]
     conf = str(data.get("price_conf") or "").lower()
     data["price_conf"] = "высокая" if "выс" in conf else "низкая" if "низ" in conf else "средняя"
-    data["price"] = f"Etsy {pe} · eBay {pb}"
+    data["price"] = f"Etsy {pe} · eBay {pb} · Vinted {pv}"
     return data
 
 
