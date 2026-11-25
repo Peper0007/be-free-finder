@@ -228,6 +228,16 @@ def test_format_and_seller_message():
     assert seller_message(Ad("2dehands", "2", "Vase ancien", "u", description="Je donne ce vase")).startswith("Bonjour")
 
 
+def test_vinted_price():
+    from finder.telegram import format_ad
+    v = ai._clean({"score": 7, "price_etsy": "—", "price_ebay": "€20–30", "price_vinted": "€15–20",
+                   "query_en": "Levi's 501 jeans vintage", "query_local": "Levi's 501 jean", "etsy_ok": False})
+    assert v["price_vinted"] == "€15–20" and "Vinted €15–20" in v["price"]
+    txt = format_ad(Ad("2dehands", "1", "Levi's 501", "u"), v)
+    assert "Vinted: €15–20" in txt and "vinted.be/catalog?search_text=Levi%27s+501+jean" in txt
+    assert ai._clean({"score": 1})["price_vinted"] == "—"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
